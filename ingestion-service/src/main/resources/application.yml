@@ -1,0 +1,24 @@
+server:
+  port: 8081
+
+spring:
+  application:
+    name: ingestion-service
+  kafka:
+    bootstrap-servers: localhost:9092
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+
+abuseipdb:
+  api:
+    key: ${ABUSEIPDB_API_KEY:be35109315284305c0a9cafa89670bf109125ff53d4908685265e0d053cde49de440bc8b3a7239aa}
+
+alienvault:
+  api:
+    key: ${ALIENVAULT_API_KEY:c6df3006950996bce335e0f06df8fe5824c018718e7c5478d7b50b2d5afaa047}

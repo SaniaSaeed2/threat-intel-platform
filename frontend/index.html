@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Threat Intelligence Platform</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Segoe UI', sans-serif; background: #0d1117; color: #e6edf3; }
+  header { background: #161b22; padding: 16px 32px; border-bottom: 1px solid #30363d; display: flex; align-items: center; gap: 16px; }
+  header h1 { font-size: 1.4rem; color: #58a6ff; }
+  .badge { background: #21262d; color: #7c3aed; border: 1px solid #7c3aed44; padding: 2px 10px; border-radius: 20px; font-size: 0.75rem; }
+  .container { max-width: 1400px; margin: 0 auto; padding: 24px 32px; }
+  .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+  .stat-card { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 20px; }
+  .stat-card .label { font-size: 0.8rem; color: #8b949e; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .stat-card .value { font-size: 2rem; font-weight: 700; }
+  .controls { display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; align-items: center; }
+  .btn { padding: 8px 20px; border-radius: 6px; border: none; cursor: pointer; font-size: 0.875rem; font-weight: 500; transition: all 0.2s; }
+  .btn-primary { background: #238636; color: #fff; }
+  .btn-primary:hover { background: #2ea043; }
+  .btn-secondary { background: #21262d; color: #c9d1d9; border: 1px solid #30363d; }
+  .btn-secondary:hover { background: #30363d; }
+  .search-bar { flex: 1; padding: 8px 16px; background: #21262d; border: 1px solid #30363d; border-radius: 6px; color: #e6edf3; font-size: 0.875rem; min-width: 200px; }
+  .search-bar:focus { outline: none; border-color: #58a6ff; }
+  select.filter { padding: 8px 12px; background: #21262d; border: 1px solid #30363d; border-radius: 6px; color: #e6edf3; font-size: 0.875rem; }
+  .table-container { background: #161b22; border: 1px solid #30363d; border-radius: 8px; overflow: hidden; }
+  table { width: 100%; border-collapse: collapse; }
+  thead { background: #21262d; }
+  th { padding: 12px 16px; text-align: left; font-size: 0.8rem; color: #8b949e; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; }
+  td { padding: 12px 16px; border-top: 1px solid #21262d; font-size: 0.875rem; }
+  tr:hover td { background: #1c2128; }
+  .severity-badge { padding: 2px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 600; }
+  .severity-CRITICAL { background: #f8514920; color: #f85149; border: 1px solid #f8514940; }
+  .severity-HIGH { background: #ff7b7220; color: #ff7b72; border: 1px solid #ff7b7240; }
+  .severity-MEDIUM { background: #ffa65720; color: #ffa657; border: 1px solid #ffa65740; }
+  .severity-LOW { background: #3fb95020; color: #3fb950; border: 1px solid #3fb95040; }
+  .type-badge { padding: 2px 8px; border-radius: 4px; font-size: 0.72rem; font-family: monospace; }
+  .type-ip { background: #1f6feb20; color: #58a6ff; border: 1px solid #1f6feb40; }
+  .type-domain { background: #7c3aed20; color: #a78bfa; border: 1px solid #7c3aed40; }
+  .source-badge { padding: 2px 8px; border-radius: 4px; font-size: 0.72rem; background: #21262d; color: #8b949e; }
+  .toast { position: fixed; bottom: 24px; right: 24px; background: #238636; color: #fff; padding: 12px 20px; border-radius: 8px; font-size: 0.875rem; opacity: 0; transition: opacity 0.3s; z-index: 999; max-width: 400px; }
+  .toast.show { opacity: 1; }
+  .toast.error { background: #da3633; }
+  .loading { text-align: center; padding: 40px; color: #8b949e; }
+  .pipeline { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; margin-bottom: 24px; }
+  .pipe-step { background: #161b22; border: 1px solid #30363d; border-radius: 6px; padding: 10px; text-align: center; position: relative; }
+  .pipe-step::after { content: '\2192'; position: absolute; right: -10px; top: 50%; transform: translateY(-50%); color: #58a6ff; font-size: 1rem; z-index: 1; }
+  .pipe-step:last-child::after { display: none; }
+  .pipe-step .name { font-size: 0.7rem; color: #58a6ff; font-weight: 600; }
+  .pipe-step .port { font-size: 0.65rem; color: #8b949e; margin-top: 2px; }
+  .pie-charts { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-bottom: 24px; }
+  .chart-card { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 16px; }
+  .chart-card h3 { font-size: 0.85rem; color: #8b949e; margin-bottom: 12px; text-transform: uppercase; }
+  .bar { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+  .bar-label { font-size: 0.75rem; width: 100px; color: #c9d1d9; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .bar-track { flex: 1; background: #21262d; border-radius: 4px; height: 8px; overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 4px; transition: width 0.5s; }
+  .bar-count { font-size: 0.75rem; color: #8b949e; width: 30px; text-align: right; }
+  .pagination { display: flex; gap: 8px; justify-content: center; margin-top: 16px; align-items: center; }
+  .page-btn { padding: 6px 14px; background: #21262d; border: 1px solid #30363d; border-radius: 6px; color: #c9d1d9; cursor: pointer; font-size: 0.8rem; }
+  .page-btn.active { background: #1f6feb; border-color: #58a6ff; color: #fff; }
+  .page-btn:hover { background: #30363d; }
+  .score-bar { display: flex; align-items: center; gap: 8px; }
+  .score-mini { width: 60px; background: #21262d; border-radius: 4px; height: 6px; overflow: hidden; }
+  .score-fill { height: 100%; border-radius: 4px; }
+</style>
+</head>
+<body>
+<header>
+  <svg width="28" height="28" viewBox="0 0 24 24" fill="none"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="#58a6ff" stroke-width="2" stroke-linecap="round"/></svg>
+  <h1>Threat Intelligence Platform</h1>
+  <span class="badge">MICROSERVICES</span>
+  <span class="badge">PAF-IAST COMP-370</span>
+</header>
+
+<div class="container">
+  <div style="margin-bottom:16px;">
+    <div style="font-size:0.75rem;color:#8b949e;margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px;">Data Pipeline (Kafka-driven)</div>
+    <div class="pipeline">
+      <div class="pipe-step"><div class="name">Ingestion</div><div class="port">:8081</div></div>
+      <div class="pipe-step"><div class="name">Extraction</div><div class="port">:8082</div></div>
+      <div class="pipe-step"><div class="name">Processing</div><div class="port">:8083</div></div>
+      <div class="pipe-step"><div class="name">Ranking</div><div class="port">:8084</div></div>
+      <div class="pipe-step"><div class="name">Database</div><div class="port">:8085</div></div>
+      <div class="pipe-step"><div class="name">Analytics</div><div class="port">:8086</div></div>
+      <div class="pipe-step"><div class="name">Gateway</div><div class="port">:8080</div></div>
+    </div>
+  </div>
+
+  <div class="stats-grid">
+    <div class="stat-card"><div class="label">Total IOCs</div><div class="value" id="stat-total" style="color:#58a6ff">0</div></div>
+    <div class="stat-card"><div class="label">Critical</div><div class="value" style="color:#f85149" id="stat-critical">0</div></div>
+    <div class="stat-card"><div class="label">High</div><div class="value" style="color:#ff7b72" id="stat-high">0</div></div>
+    <div class="stat-card"><div class="label">Medium / Low</div><div class="value" style="color:#ffa657" id="stat-medlow">0</div></div>
+  </div>
+
+  <div class="pie-charts">
+    <div class="chart-card"><h3>By Severity</h3><div id="chart-severity"></div></div>
+    <div class="chart-card"><h3>By Source</h3><div id="chart-source"></div></div>
+    <div class="chart-card"><h3>By Type</h3><div id="chart-type"></div></div>
+  </div>
+
+  <div class="controls">
+    <button class="btn btn-primary" onclick="triggerFetch()">&#9889; Fetch Threats</button>
+    <button class="btn btn-secondary" onclick="loadIOCs()">&#8635; Refresh</button>
+    <input class="search-bar" type="text" id="search-input" placeholder="Search IP or domain..." oninput="filterTable()">
+    <select class="filter" id="type-filter" onchange="filterTable()">
+      <option value="">All Types</option>
+      <option value="ip">IP</option>
+      <option value="domain">Domain</option>
+    </select>
+    <select class="filter" id="severity-filter" onchange="filterTable()">
+      <option value="">All Severity</option>
+      <option value="CRITICAL">Critical</option>
+      <option value="HIGH">High</option>
+      <option value="MEDIUM">Medium</option>
+      <option value="LOW">Low</option>
+    </select>
+    <select class="filter" id="source-filter" onchange="filterTable()">
+      <option value="">All Sources</option>
+      <option value="abuseipdb">AbuseIPDB</option>
+      <option value="alienvault">AlienVault</option>
+    </select>
+  </div>
+
+  <div class="table-container">
+    <table>
+      <thead>
+        <tr>
+          <th>#</th><th>Type</th><th>Value</th><th>Source</th>
+          <th>Severity</th><th>Score</th><th>Description</th><th>Discovered</th>
+        </tr>
+      </thead>
+      <tbody id="ioc-table-body">
+        <tr><td colspan="8" class="loading">Loading IOCs...</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="pagination" id="pagination"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const API = 'http://localhost:8080';
+let allIOCs = [];
+let filteredIOCs = [];
+let currentPage = 1;
+const PAGE_SIZE = 15;
+
+async function loadIOCs() {
+  try {
+    const res = await fetch(API + '/api/iocs/iocs');
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    allIOCs = await res.json();
+    filteredIOCs = allIOCs.slice();
+    renderTable();
+    loadStats();
+  } catch(e) {
+    showMockData();
+  }
+}
+
+function showMockData() {
+  allIOCs = [
+    {id:1,type:'ip',value:'192.168.1.100',source:'abuseipdb',severityScore:95,severityLevel:'CRITICAL',description:'Abuse confidence: 95%, Country: CN',discoveredAt:'2024-01-15T10:00:00'},
+    {id:2,type:'domain',value:'malware-c2.evil.com',source:'alienvault',severityScore:88,severityLevel:'CRITICAL',description:'C2 domain - Active malware campaign',discoveredAt:'2024-01-15T09:30:00'},
+    {id:3,type:'ip',value:'185.220.101.50',source:'alienvault',severityScore:82,severityLevel:'CRITICAL',description:'Ransomware C2 server',discoveredAt:'2024-01-15T09:00:00'},
+    {id:4,type:'ip',value:'10.0.0.50',source:'abuseipdb',severityScore:75,severityLevel:'HIGH',description:'Abuse confidence: 87%, Country: RU',discoveredAt:'2024-01-15T08:30:00'},
+    {id:5,type:'domain',value:'phishing-site.net',source:'alienvault',severityScore:70,severityLevel:'HIGH',description:'Active phishing domain',discoveredAt:'2024-01-15T08:00:00'},
+    {id:6,type:'ip',value:'45.33.32.156',source:'alienvault',severityScore:65,severityLevel:'HIGH',description:'C2 server - botnet infrastructure',discoveredAt:'2024-01-15T07:30:00'},
+    {id:7,type:'ip',value:'172.16.0.25',source:'abuseipdb',severityScore:55,severityLevel:'MEDIUM',description:'Abuse confidence: 92%, VPN exit node',discoveredAt:'2024-01-15T07:00:00'},
+    {id:8,type:'domain',value:'ransomware-payment.onion.ws',source:'alienvault',severityScore:50,severityLevel:'MEDIUM',description:'Ransomware payment portal',discoveredAt:'2024-01-15T06:30:00'},
+    {id:9,type:'ip',value:'104.21.45.67',source:'alienvault',severityScore:45,severityLevel:'MEDIUM',description:'Phishing host',discoveredAt:'2024-01-15T06:00:00'},
+    {id:10,type:'domain',value:'chinanet.cn',source:'abuseipdb',severityScore:35,severityLevel:'LOW',description:'Associated domain for abuse IP',discoveredAt:'2024-01-15T05:30:00'}
+  ];
+  filteredIOCs = allIOCs.slice();
+  renderTable();
+  renderStats({total:10,bySeverity:{CRITICAL:3,HIGH:3,MEDIUM:3,LOW:1},bySource:{abuseipdb:4,alienvault:6},byType:{ip:6,domain:4}});
+  showToast('Demo data shown - start backend to see live data', true);
+}
+
+async function loadStats() {
+  try {
+    const res = await fetch(API + '/api/iocs/iocs/stats');
+    renderStats(await res.json());
+  } catch(e) {}
+}
+
+function renderStats(stats) {
+  document.getElementById('stat-total').textContent = stats.total || 0;
+  const sev = stats.bySeverity || {};
+  document.getElementById('stat-critical').textContent = sev.CRITICAL || 0;
+  document.getElementById('stat-high').textContent = sev.HIGH || 0;
+  document.getElementById('stat-medlow').textContent = ((sev.MEDIUM||0) + (sev.LOW||0));
+  renderBarChart('chart-severity', sev, {CRITICAL:'#f85149',HIGH:'#ff7b72',MEDIUM:'#ffa657',LOW:'#3fb950'});
+  renderBarChart('chart-source', stats.bySource || {}, {abuseipdb:'#58a6ff',alienvault:'#a78bfa'});
+  renderBarChart('chart-type', stats.byType || {}, {ip:'#58a6ff',domain:'#a78bfa'});
+}
+
+function renderBarChart(id, data, colors) {
+  const el = document.getElementById(id);
+  const max = Math.max.apply(null, Object.values(data).concat([1]));
+  el.innerHTML = Object.entries(data).map(function(e) {
+    return '<div class="bar"><div class="bar-label">' + e[0] + '</div>' +
+      '<div class="bar-track"><div class="bar-fill" style="width:' + Math.round((e[1]/max)*100) + '%;background:' + (colors[e[0]]||'#58a6ff') + '"></div></div>' +
+      '<div class="bar-count">' + e[1] + '</div></div>';
+  }).join('');
+}
+
+function filterTable() {
+  const search = document.getElementById('search-input').value.toLowerCase();
+  const type = document.getElementById('type-filter').value;
+  const severity = document.getElementById('severity-filter').value;
+  const source = document.getElementById('source-filter').value;
+  filteredIOCs = allIOCs.filter(function(ioc) {
+    return (!search || ioc.value.toLowerCase().indexOf(search) >= 0 || (ioc.description||'').toLowerCase().indexOf(search) >= 0)
+      && (!type || ioc.type === type)
+      && (!severity || ioc.severityLevel === severity)
+      && (!source || ioc.source === source);
+  });
+  currentPage = 1;
+  renderTable();
+}
+
+function renderTable() {
+  const tbody = document.getElementById('ioc-table-body');
+  const start = (currentPage - 1) * PAGE_SIZE;
+  const page = filteredIOCs.slice(start, start + PAGE_SIZE);
+  if (!page.length) { tbody.innerHTML = '<tr><td colspan="8" class="loading">No IOCs found</td></tr>'; document.getElementById('pagination').innerHTML=''; return; }
+  tbody.innerHTML = page.map(function(ioc, i) {
+    const score = ioc.severityScore || 0;
+    const sc = score >= 80 ? '#f85149' : score >= 60 ? '#ff7b72' : score >= 40 ? '#ffa657' : '#3fb950';
+    const date = ioc.discoveredAt ? new Date(ioc.discoveredAt).toLocaleString() : 'N/A';
+    return '<tr><td style="color:#8b949e;font-size:.75rem">' + (start+i+1) + '</td>' +
+      '<td><span class="type-badge type-' + ioc.type + '">' + ioc.type.toUpperCase() + '</span></td>' +
+      '<td><code style="font-size:.82rem">' + ioc.value + '</code></td>' +
+      '<td><span class="source-badge">' + ioc.source + '</span></td>' +
+      '<td><span class="severity-badge severity-' + ioc.severityLevel + '">' + (ioc.severityLevel||'N/A') + '</span></td>' +
+      '<td><div class="score-bar"><div class="score-mini"><div class="score-fill" style="width:' + score + '%;background:' + sc + '"></div></div><span style="font-size:.8rem;color:' + sc + '">' + score + '</span></div></td>' +
+      '<td style="color:#8b949e;font-size:.8rem;max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + (ioc.description||'') + '">' + (ioc.description||'') + '</td>' +
+      '<td style="color:#8b949e;font-size:.75rem">' + date + '</td></tr>';
+  }).join('');
+  renderPagination();
+}
+
+function renderPagination() {
+  const total = Math.ceil(filteredIOCs.length / PAGE_SIZE);
+  const pag = document.getElementById('pagination');
+  if (total <= 1) { pag.innerHTML=''; return; }
+  let html = '';
+  if (currentPage > 1) html += '<button class="page-btn" onclick="goPage(' + (currentPage-1) + ')">Prev</button>';
+  for (let i=1; i<=total; i++) {
+    if (i===1||i===total||Math.abs(i-currentPage)<=1) html += '<button class="page-btn' + (i===currentPage?' active':'') + '" onclick="goPage(' + i + ')">' + i + '</button>';
+    else if (Math.abs(i-currentPage)===2) html += '<span style="color:#8b949e">...</span>';
+  }
+  if (currentPage < total) html += '<button class="page-btn" onclick="goPage(' + (currentPage+1) + ')">Next</button>';
+  pag.innerHTML = html;
+}
+
+function goPage(p) { currentPage = p; renderTable(); }
+
+async function triggerFetch() {
+  showToast('Triggering threat data fetch...');
+  try {
+    const res = await fetch(API + '/api/ingestion/fetch', {method:'POST'});
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    showToast('Fetch triggered! Refresh in 5 seconds.');
+    setTimeout(loadIOCs, 5000);
+  } catch(e) {
+    showToast('Backend offline - showing demo data', true);
+    showMockData();
+  }
+}
+
+function showToast(msg, isError) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show' + (isError ? ' error' : '');
+  setTimeout(function(){ t.className='toast'; }, 3500);
+}
+
+loadIOCs();
+setInterval(loadIOCs, 30000);
+</script>
+</body>
+</html>
