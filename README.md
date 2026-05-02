@@ -118,7 +118,7 @@ Eureka Service Registry (:8761)
 | Maven | 3.8+ | https://maven.apache.org |
 | MySQL | 8.0 | https://dev.mysql.com/downloads |
 | Apache Kafka | 3.x | https://kafka.apache.org/downloads |
-| Docker (optional) | Latest | https://www.docker.com |
+| Docker | Latest | https://www.docker.com |
 
 ---
 
