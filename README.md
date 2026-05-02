@@ -1,197 +1,229 @@
-# 🛡 Threat Intelligence Platform
+# Threat Intelligence Processing Platform
 
-## COMP-370 – Software Construction and Development
+A distributed microservices-based cybersecurity platform that ingests threat data from AbuseIPDB and AlienVault OTX, extracts and validates Indicators of Compromise (IOCs), scores them using VirusTotal, and stores enriched results in MySQL — all connected through Apache Kafka.
 
-### Complex Computing Problem (CCP)
 
-**PAF-IAST | Instructor: Dr. Malik Nabeel Ahmed Awan**
+---
 
-\---
+## Table of Contents
 
-## 📐 Architecture Overview
+- [Overview](#overview)
+- [Architecture](#architecture)
+- [Tech Stack](#tech-stack)
+- [Microservices](#microservices)
+- [Kafka Topics](#kafka-topics)
+- [Getting Started](#getting-started)
+- [API Endpoints](#api-endpoints)
+- [API Keys](#api-keys)
+- [Troubleshooting](#troubleshooting)
+- 
 
-This platform implements a **distributed microservices-based cybersecurity system** that ingests,
-processes, ranks, and serves Indicators of Compromise (IOCs).
+
+---
+
+## Overview
+
+Manual threat analysis cannot keep pace with modern attack volumes. This platform automates the full pipeline — from pulling raw data out of threat feeds, all the way through to storing clean, severity-scored IOCs ready to query.
+
+**What it does:**
+- Fetches IP and domain threat data from AbuseIPDB and AlienVault OTX
+- Extracts and validates IOCs using regex-based parsing
+- Deduplicates and filters private or non-routable indicators
+- Scores each IOC using VirusTotal (rule-based + API scoring)
+- Stores enriched records in MySQL with full audit fields
+- Exposes REST endpoints for querying, ranking, and analytics
+
+
+---
+
+## Architecture
 
 ```
-External APIs          Kafka Pipeline           Storage \\\\\\\& Analytics
-─────────────          ──────────────           ───────────────────
-AbuseIPDB  ──┐                                  ┌── MySQL DB
-             ├──► Ingestion ──► \\\\\\\[raw-threats] ──► Processing ──► \\\\\\\[processed-iocs] ──► Database Service
-AlienVault ──┘    Service        (Kafka)          Service        \\\\\\\[iocs-to-rank]        │
-                                                                                        ├──► Ranking Service
-                                                                                        │    (Severity Scores)
-                                                                                        │
-                                                                                        └──► Analytics Service
-                                                                                             │
-API Gateway (port 8080) ◄── Frontend Dashboard ◄─────────────────────────────────────────────┘
-Eureka Service Registry (port 8761)
+External APIs          Kafka Pipeline                    Storage & Analytics
+─────────────          ──────────────                    ───────────────────
+AbuseIPDB  ──┐                                           ┌── MySQL DB
+             ├──► Ingestion ──► [raw-threats] ──► Processing ──► [processed-iocs] ──► Database Service
+AlienVault ──┘    Service         (Kafka)          Service                                   │
+                                                      │                                      │
+                                                      └──► [iocs-to-rank] ──► Ranking ───────┘
+                                                                               Service
+                                                                            (Severity Scores)
+                                                                                  │
+                                                                           [ranked-iocs]
+                                                                                  │
+                                                                           Database Service
+                                                                                  │
+                                                                           Analytics Service
+                                                                                  │
+API Gateway (:8080) ◄──────────────── Frontend Dashboard ◄──────────────────────────┘
+Eureka Service Registry (:8761)
 ```
 
-## 🧩 Microservices
+---
 
-|Service|Port|Responsibility|
-|-|-|-|
-|Eureka Server|8761|Service discovery \& registry|
-|API Gateway|8080|Single entry point, routing, CORS|
-|Ingestion Service|8081|Fetches data from AbuseIPDB \& AlienVault|
-|Extraction Service|8082|Parses JSON, extracts IPs \& domains|
-|Processing Service|8083|Consumes raw-threats, validates, re-publishes|
-|Database Service|8084|Stores IOCs in MySQL, exposes REST API|
-|Ranking Service|8085|Computes severity scores (rule-based + VirusTotal)|
-|Analytics Service|8086|Aggregated views \& stats|
-|Kafka Producer Service|8087|Manual/programmatic Kafka publishing|
+## Tech Stack
 
-## 📦 Kafka Topics
+| Component | Technology |
+|---|---|
+| Language | Java 17 + Spring Boot |
+| Service Discovery | Spring Cloud Eureka |
+| API Gateway | Spring Cloud Gateway |
+| Messaging | Apache Kafka 3.x + Zookeeper |
+| Database | MySQL 8.0 |
+| ORM | Spring Data JPA (Hibernate) |
+| HTTP Client | Spring WebFlux (WebClient) |
+| Containerisation | Docker + Docker Compose |
+| Build Tool | Apache Maven 3.8+ |
+| Frontend | HTML + CSS + Vanilla JS |
+| Threat Feed 1 | AbuseIPDB REST API |
+| Threat Feed 2 | AlienVault OTX REST API |
+| Ranking API | VirusTotal API v3 |
 
-|Topic|Producer|Consumer|
-|-|-|-|
-|`raw-threats`|Ingestion Service|Processing Service|
-|`processed-iocs`|Processing Service|Database Service|
-|`iocs-to-rank`|Processing Service|Ranking Service|
-|`ranked-iocs`|Ranking Service|Database Service|
+---
 
-\---
+## Microservices
 
-## 🚀 Setup Guide
+| Service | Port | Responsibility |
+|---|---|---|
+| `eureka-server` | 8761 | Service discovery and registry |
+| `api-gateway` | 8080 | Single entry point, routing, CORS |
+| `ingestion-service` | 8081 | Fetches data from AbuseIPDB and AlienVault |
+| `extraction-service` | 8082 | Parses JSON, extracts IPs and domains |
+| `processing-service` | 8083 | Validates, deduplicates, and re-publishes IOCs |
+| `database-service` | 8084 | Stores IOCs in MySQL, exposes REST API |
+| `ranking-service` | 8085 | Computes severity scores via rule-based + VirusTotal |
+| `analytics-service` | 8086 | Aggregated views and statistics |
+| `kafka-producer-service` | 8087 | Manual and programmatic Kafka publishing |
+
+---
+
+## Kafka Topics
+
+| Topic | Producer | Consumer |
+|---|---|---|
+| `raw-threats` | Ingestion Service | Processing Service |
+| `processed-iocs` | Processing Service | Database Service |
+| `iocs-to-rank` | Processing Service | Ranking Service |
+| `ranked-iocs` | Ranking Service | Database Service |
+
+---
+
+## Getting Started
 
 ### Prerequisites
 
-Make sure these are installed:
+| Tool | Version | Download |
+|---|---|---|
+| Java JDK | 17+ | https://adoptium.net |
+| Maven | 3.8+ | https://maven.apache.org |
+| MySQL | 8.0 | https://dev.mysql.com/downloads |
+| Apache Kafka | 3.x | https://kafka.apache.org/downloads |
+| Docker (optional) | Latest | https://www.docker.com |
 
-|Tool|Version|Download|
-|-|-|-|
-|Java JDK|17+|https://adoptium.net/|
-|Maven|3.8+|https://maven.apache.org/|
-|MySQL|8.0|https://dev.mysql.com/downloads/|
-|Apache Kafka|3.x|https://kafka.apache.org/downloads|
-|Docker (optional)|Latest|https://www.docker.com/|
+---
 
-\---
-
-### 🐳 Option A: Run with Docker Compose (Easiest)
+### Option A — Docker Compose (Recommended)
 
 ```bash
-# 1. Navigate to project root
+# 1. Clone the repository
+git clone https://github.com/your-username/threat-intel-platform.git
 cd threat-intel-platform
 
 # 2. (Optional) Set real API keys
-export ABUSEIPDB\\\\\\\_API\\\\\\\_KEY=your\\\\\\\_key\\\\\\\_here
-export ALIENVAULT\\\\\\\_API\\\\\\\_KEY=your\\\\\\\_key\\\\\\\_here
+export ABUSEIPDB_API_KEY=your_key_here
+export ALIENVAULT_API_KEY=your_key_here
+export VIRUSTOTAL_API_KEY=your_key_here
 
 # 3. Start everything
 docker-compose up --build
-
-# 4. Open frontend
-open http://localhost:3000
-
-# 5. Open Eureka dashboard
-open http://localhost:8761
-
-# 6. Open Kafka UI
-open http://localhost:9090
 ```
 
-> ⚠️ First build takes \\\\\\\~5 minutes. Subsequent starts are faster.
+Once running, open:
+- Frontend dashboard: http://localhost:3000
+- Eureka dashboard: http://localhost:8761
+- Kafka UI: http://localhost:9090
 
-\---
+> First build takes around 5 minutes. Subsequent starts are faster.
 
-### 🔧 Option B: Run Manually (Step by Step)
+---
 
-#### Step 1: Start MySQL
+### Option B — Run Manually
 
-```sql
--- Using MySQL CLI or Workbench:
-mysql -u root -p < init.sql
--- OR let Spring JPA auto-create the tables (ddl-auto: update)
+#### Step 1: Set up MySQL
+
+```bash
+mysql -u root -p < schema.sql
 ```
 
-Make sure MySQL is running on port 3306. Update credentials in:
-`database-service/src/main/resources/application.yml`
+Update credentials in `database-service/src/main/resources/application.yml`:
 
 ```yaml
-spring.datasource.username: root
-spring.datasource.password: root   # change this
+spring:
+  datasource:
+    username: root
+    password: your_password
 ```
-
-\---
 
 #### Step 2: Start Zookeeper and Kafka
 
 ```bash
-# Terminal 1 - Start Zookeeper
-$KAFKA\\\\\\\_HOME/bin/zookeeper-server-start.sh $KAFKA\\\\\\\_HOME/config/zookeeper.properties
+# Terminal 1 — Zookeeper
+$KAFKA_HOME/bin/zookeeper-server-start.sh $KAFKA_HOME/config/zookeeper.properties
 
-# Terminal 2 - Start Kafka broker
-$KAFKA\\\\\\\_HOME/bin/kafka-server-start.sh $KAFKA\\\\\\\_HOME/config/server.properties
+# Terminal 2 — Kafka broker
+$KAFKA_HOME/bin/kafka-server-start.sh $KAFKA_HOME/config/server.properties
 
-# Terminal 3 - Create topics (wait 10 seconds after Kafka starts)
+# Terminal 3 — Create topics (wait 10 seconds after Kafka starts)
 chmod +x create-kafka-topics.sh
 ./create-kafka-topics.sh
 ```
 
-\---
-
-#### Step 3: Build All Services
+#### Step 3: Build all services
 
 ```bash
-cd threat-intel-platform
-
-# Build everything at once (from root pom)
 mvn clean package -DskipTests
-
-# Or build individual service
-cd eureka-server \\\\\\\&\\\\\\\& mvn clean package -DskipTests \\\\\\\&\\\\\\\& cd ..
 ```
 
-\---
+#### Step 4: Start services in order
 
-#### Step 4: Start Services in Order
-
-Open a separate terminal for each service, OR use the script:
+> Always start Eureka first — other services register with it on startup.
 
 ```bash
-# Option A: Use startup script
-chmod +x start-all.sh
-./start-all.sh
-
-# Option B: Manual (recommended for debugging - one terminal per service)
-
-# Terminal 1: Eureka (start FIRST, wait 10 seconds)
+# Terminal 1 — Eureka (wait 10 seconds before starting others)
 java -jar eureka-server/target/eureka-server-1.0.0.jar
 
-# Terminal 2: API Gateway
+# Terminal 2 — API Gateway
 java -jar api-gateway/target/api-gateway-1.0.0.jar
 
-# Terminal 3: Ingestion Service
-java -DABUSEIPDB\\\\\\\_API\\\\\\\_KEY=your\\\\\\\_key -jar ingestion-service/target/ingestion-service-1.0.0.jar
+# Terminal 3 — Ingestion Service
+java -jar ingestion-service/target/ingestion-service-1.0.0.jar
 
-# Terminal 4: Extraction Service
+# Terminal 4 — Extraction Service
 java -jar extraction-service/target/extraction-service-1.0.0.jar
 
-# Terminal 5: Processing Service
+# Terminal 5 — Processing Service
 java -jar processing-service/target/processing-service-1.0.0.jar
 
-# Terminal 6: Database Service
+# Terminal 6 — Database Service
 java -jar database-service/target/database-service-1.0.0.jar
 
-# Terminal 7: Ranking Service
+# Terminal 7 — Ranking Service
 java -jar ranking-service/target/ranking-service-1.0.0.jar
 
-# Terminal 8: Analytics Service
+# Terminal 8 — Analytics Service
 java -jar analytics-service/target/analytics-service-1.0.0.jar
 
-# Terminal 9: Kafka Producer Service
+# Terminal 9 — Kafka Producer Service
 java -jar kafka-producer-service/target/kafka-producer-service-1.0.0.jar
 ```
 
-> ⚡ \\\\\\\*\\\\\\\*Always start Eureka first!\\\\\\\*\\\\\\\* Other services register with it on startup.
+Or use the startup script:
 
-\---
+```bash
+chmod +x start-all.sh && ./start-all.sh
+```
 
-#### Step 5: Open the Frontend
-
-Just open the HTML file in your browser:
+#### Step 5: Open the frontend
 
 ```
 threat-intel-platform/frontend/src/index.html
@@ -204,68 +236,44 @@ cd frontend/src
 npx live-server --port=3000
 ```
 
-\---
+---
 
-## 🔑 API Keys 
+## API Endpoints
 
-The system runs in **demo mode** without API keys (uses mock data).
-To use real threat intelligence:
+All requests can go through the API Gateway at `http://localhost:8080`.
 
-### AbuseIPDB
-
-1. Register at https://www.abuseipdb.com/
-2. Generate API key
-3. Set: `ABUSEIPDB\\\\\\\_API\\\\\\\_KEY=your\\\\\\\_key` in environment
-
-### AlienVault OTX
-
-1. Register at https://otx.alienvault.com/
-2. Get API key from your profile
-3. Set: `ALIENVAULT\\\\\\\_API\\\\\\\_KEY=your\\\\\\\_key`
-
-### VirusTotal (for advanced ranking)
-
-1. Register at https://www.virustotal.com/
-2. Set: `VIRUSTOTAL\\\\\\\_API\\\\\\\_KEY=your\\\\\\\_key`
-
-\---
-
-## 🧪 Testing the API
-
-### Trigger Ingestion
+### Ingestion
 
 ```bash
+# Trigger ingestion from all sources
 curl -X POST "http://localhost:8081/api/ingest/trigger?source=all"
 ```
 
-### Get All IOCs
+### IOCs
 
 ```bash
-curl "http://localhost:8084/api/ioc?page=0\\\\\\\&size=10"
-```
+# Get all IOCs (paginated)
+curl "http://localhost:8084/api/ioc?page=0&size=10"
 
-### Rank an IOC
-
-```bash
-curl "http://localhost:8085/api/rank/ioc?value=185.220.101.5\\\\\\\&type=IP\\\\\\\_ADDRESS"
-```
-
-### Get Statistics
-
-```bash
+# Get statistics
 curl "http://localhost:8084/api/ioc/stats"
-```
 
-### Get High-Severity IOCs
-
-```bash
+# Get high-severity IOCs
 curl "http://localhost:8084/api/ioc/high-severity?minScore=7.0"
 ```
 
-### Manually Publish to Kafka
+### Ranking
 
 ```bash
-curl -X POST "http://localhost:8087/api/kafka/publish-ioc?iocValue=1.2.3.4\\\\\\\&iocType=IP\\\\\\\_ADDRESS"
+# Rank a specific IOC
+curl "http://localhost:8085/api/rank/ioc?value=185.220.101.5&type=IP_ADDRESS"
+```
+
+### Kafka Producer
+
+```bash
+# Manually publish an IOC to Kafka
+curl -X POST "http://localhost:8087/api/kafka/publish-ioc?iocValue=1.2.3.4&iocType=IP_ADDRESS"
 ```
 
 ### Through API Gateway
@@ -275,41 +283,61 @@ curl "http://localhost:8080/api/ioc/stats"
 curl "http://localhost:8080/api/analytics/summary"
 ```
 
-\---
+---
 
-\---
+## API Keys
 
-## 🔍 Troubleshooting
+The system runs in demo mode without API keys — mock data loads automatically.
+To use real threat intelligence, register and set the following:
 
-|Problem|Solution|
-|-|-|
-|Services not showing in Eureka|Wait 30-60 seconds after starting — Eureka has heartbeat delays|
-|MySQL connection refused|Ensure MySQL is running on port 3306 with correct credentials|
-|Kafka connection refused|Make sure Zookeeper is started before Kafka|
-|`java.lang.ClassNotFoundException`|Rebuild with `mvn clean package -DskipTests`|
-|Port already in use|Kill the process: `lsof -ti:8081 \| xargs kill -9`|
-|No IOCs in database|Trigger manual ingestion via the frontend or curl command above|
+| Provider | Register At | Environment Variable |
+|---|---|---|
+| AbuseIPDB | https://www.abuseipdb.com | `ABUSEIPDB_API_KEY` |
+| AlienVault OTX | https://otx.alienvault.com | `ALIENVAULT_API_KEY` |
+| VirusTotal | https://www.virustotal.com | `VIRUSTOTAL_API_KEY` |
 
-\---
+---
 
-## 📊 CCP Requirements Mapping
+## Troubleshooting
 
-|CCP Requirement|Implementation|
-|-|-|
-|Microservices architecture|9 Spring Boot services + Eureka + Gateway|
-|Apache Kafka|4 topics: raw-threats, processed-iocs, iocs-to-rank, ranked-iocs|
-|MySQL persistent storage|JPA entities + Repository (IocRecord)|
-|AbuseIPDB integration|`AbuseIPDBClient.java` — fetches blacklist|
-|AlienVault integration|`AlienVaultClient.java` — fetches pulses|
-|IOC extraction (IPs \& domains)|`ExtractionController.java`, `IocProcessorService.java`|
-|IOC severity ranking|`RankingService.java` — rule-based + VirusTotal|
-|Event-driven architecture|All inter-service comms via Kafka topics|
-|Eureka service discovery|All services register and discover via Eureka|
-|REST API (6-9 APIs)|Each service exposes REST endpoints|
-|Frontend|Full dashboard: dashboard, IOC table, ingestion, analytics|
-|Scalable \& loosely coupled|Each service independently deployable|
+| Problem | Solution |
+|---|---|
+| Services not showing in Eureka | Wait 30–60 seconds after starting — Eureka has heartbeat delays |
+| MySQL connection refused | Ensure MySQL is running on port 3306 with correct credentials |
+| Kafka connection refused | Make sure Zookeeper is started before Kafka |
+| `ClassNotFoundException` | Rebuild with `mvn clean package -DskipTests` |
+| Port already in use | Run `lsof -ti:8081 \| xargs kill -9` (replace port as needed) |
+| No IOCs in database | Trigger manual ingestion via frontend or curl |
 
-\---
+---
 
-*COMP-370 | PAF-IAST School of Computing Sciences | Spring 2026*
 
+
+---
+
+## Project Structure
+
+```
+threat-intel-platform/
+├── analytics-service/
+├── api-gateway/
+├── database-service/
+├── eureka-server/
+├── extraction-service/
+├── frontend/
+├── ingestion-service/
+├── kafka-producer-service/
+├── processing-service/
+├── ranking-service/
+├── docker-compose.yml
+├── pom.xml
+├── schema.sql
+└── README.md
+```
+
+---
+
+
+**Course:** COMP-370 – Software Construction and Development  
+**Institution:** PAF-IAST, School of Computing Sciences, Mang, Haripur  
+**Instructor:** Dr. Malik Nabeel Ahmed Awan  
