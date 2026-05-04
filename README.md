@@ -77,7 +77,7 @@ Eureka Service Registry (:8761)
 | Frontend | HTML + CSS + Vanilla JS |
 | Threat Feed 1 | AbuseIPDB REST API |
 | Threat Feed 2 | AlienVault OTX REST API |
-| Ranking API | VirusTotal API v3 |
+
 
 ---
 
